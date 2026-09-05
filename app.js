@@ -362,9 +362,23 @@ function renderBlock(chapter, section, block) {
           el('li', {},
             typeof item === 'string' ? item : item.text,
             (item.note ? el('div', { class: 'step-note' }, item.note) : null),
+            (item.image ? el('img', {
+              class: 'step-image',
+              src: `./illustrations/${item.image}`,
+              alt: item.imageAlt || '',
+              loading: 'lazy',
+            }) : null),
           )
         )
       )
+    );
+    case 'image': return el('div', { class: 'block block-image' },
+      el('img', {
+        src: `./illustrations/${block.src}`,
+        alt: block.alt || '',
+        loading: 'lazy',
+      }),
+      block.caption ? el('div', { class: 'image-caption' }, block.caption) : null,
     );
     case 'phases': return el('div', { class: 'block phases' },
       ...block.items.map(p =>

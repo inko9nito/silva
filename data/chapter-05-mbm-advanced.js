@@ -16,6 +16,11 @@ export const chapter05 = {
         },
         { type: 'exercise-header', title: '3 Fingers Technique' },
         {
+          type: 'image',
+          src: 'three-fingers.png',
+          alt: 'A hand with thumb, index, and middle finger pressed together.',
+        },
+        {
           type: 'audio-placeholder',
           title: '3 Fingers programming',
           description: 'The guided audio for anchoring the technique.',

@@ -66,12 +66,36 @@ export const chapter03 = {
         {
           type: 'steps',
           items: [
-            { text: 'Visualize yourself standing in front of a chalkboard or writing board. You have a writing instrument in one hand and an eraser in the other. Draw a large circle in the center of the board.' },
-            { text: 'Draw a big "X" within the circle.' },
-            { text: 'Erase the "X" from within the circle, being very careful not to erase the circle in the least.' },
-            { text: 'Outside the circle, to the right, write the word "deeper". Every time you write "deeper" you enter a deeper, healthier level of mind in the direction of normal, natural, healthy sleep.' },
-            { text: 'Write a big number "100" within the circle, then slowly erase it — careful not to erase the circle — then go over "deeper" again.' },
-            { text: 'Continue with 99, then 98, 97, and so on. Write the number, erase it carefully, then go over "deeper", on a descending scale until you enter sleep.' },
+            {
+              text: 'Visualize yourself standing in front of a chalkboard or writing board. You have a writing instrument in one hand and an eraser in the other. Draw a large circle in the center of the board.',
+              image: 'sleep-circle.png',
+              imageAlt: 'A chalkboard with a large empty circle drawn in the center.',
+            },
+            {
+              text: 'Draw a big "X" within the circle.',
+              image: 'sleep-x.png',
+              imageAlt: 'A chalkboard with a circle and a large X drawn inside it.',
+            },
+            {
+              text: 'Erase the "X" from within the circle, being very careful not to erase the circle in the least.',
+              image: 'sleep-circle.png',
+              imageAlt: 'A chalkboard with the X erased, only the circle remaining.',
+            },
+            {
+              text: 'Outside the circle, to the right, write the word "deeper". Every time you write "deeper" you enter a deeper, healthier level of mind in the direction of normal, natural, healthy sleep.',
+              image: 'sleep-deeper.png',
+              imageAlt: 'A chalkboard with a circle and the word "deeper" written to the right.',
+            },
+            {
+              text: 'Write a big number "100" within the circle, then slowly erase it — careful not to erase the circle — then go over "deeper" again.',
+              image: 'sleep-100.png',
+              imageAlt: 'A chalkboard with the number 100 being erased inside the circle, and "deeper" to the right.',
+            },
+            {
+              text: 'Continue with 99, then 98, 97, and so on. Write the number, erase it carefully, then go over "deeper", on a descending scale until you enter sleep.',
+              image: 'sleep-deeper-empty.png',
+              imageAlt: 'A chalkboard with just the circle and the word "deeper", ready for the next number.',
+            },
           ],
         },
         {

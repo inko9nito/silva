@@ -360,6 +360,29 @@ body {
   font-size: 13px;
   color: var(--ink-soft);
 }
+.block.steps .step-image {
+  display: block;
+  max-width: 220px;
+  width: 100%;
+  height: auto;
+  margin: 10px auto 2px;
+  border-radius: 6px;
+}
+
+.block.block-image {
+  text-align: center;
+}
+.block.block-image img {
+  max-width: 240px;
+  width: 100%;
+  height: auto;
+  margin: 4px auto 6px;
+}
+.block.block-image .image-caption {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
 
 .block.phases .phase {
   padding: 12px 14px;
