@@ -9,15 +9,40 @@ let statusListeners = [];
 function notify(status) { for (const fn of statusListeners) fn(status); }
 export function onStatus(fn) { statusListeners.push(fn); }
 
+export let lastError = null;
+
 export async function loadInitial() {
   notify('loading');
+  lastError = null;
   const token = await getToken();
-  const res = await fetch('/api/answers', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) { notify('unauth'); throw new Error('unauth'); }
-  if (!res.ok) { notify('error'); throw new Error('load failed'); }
-  cache = await res.json();
+  let res;
+  try {
+    res = await fetch('/api/answers', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (netErr) {
+    lastError = `Network error: ${netErr.message}`;
+    notify('error');
+    throw netErr;
+  }
+  if (res.status === 401) {
+    lastError = 'Unauthorized (401).';
+    notify('unauth');
+    throw new Error('unauth');
+  }
+  if (!res.ok) {
+    let body = '';
+    try { body = await res.text(); } catch {}
+    lastError = `HTTP ${res.status}: ${body.slice(0, 300)}`;
+    notify('error');
+    throw new Error('load failed');
+  }
+  try { cache = await res.json(); }
+  catch (parseErr) {
+    lastError = `Bad JSON from server: ${parseErr.message}`;
+    notify('error');
+    throw parseErr;
+  }
   notify('idle');
   return cache;
 }

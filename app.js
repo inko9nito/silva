@@ -87,9 +87,12 @@ function renderSplash(state, onRetry) {
   } else {
     inner.append(
       el('p', {}, 'Couldn\'t reach the server. Your saved answers are safe — just try again.'),
+      store.lastError ? el('pre', {
+        style: 'text-align:left; background:var(--surface-alt); padding:10px; border-radius:8px; font-size:12px; overflow:auto; margin-top:12px;',
+      }, store.lastError) : null,
       el('button', {
         class: 'pw-submit',
-        style: 'margin-top: 8px;',
+        style: 'margin-top: 12px;',
         onclick: onRetry,
       }, 'Retry'),
     );
