@@ -366,9 +366,15 @@ body {
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-size: 15px;
+  /* iOS Safari zooms on any input < 16px; keep it at 16 to prevent that. */
+  font-size: 16px;
   line-height: 1.4;
   resize: vertical;
+}
+
+/* Safety net — any input/textarea/select stays at 16px so iOS doesn't zoom. */
+input, textarea, select {
+  font-size: 16px;
 }
 .block.reflection textarea:focus,
 .block.journal textarea:focus,
