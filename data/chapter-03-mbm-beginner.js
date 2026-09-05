@@ -1,21 +1,21 @@
 const sleepEvalItems = [
-  { id: 'well', text: 'How well do you sleep?' },
-  { id: 'rested', text: 'Do you wake up feeling rested?' },
-  { id: 'hours', text: 'How many hours do you average per night?' },
-  { id: 'fall', text: 'How long does it take you to fall asleep each night?' },
-  { id: 'feel', text: 'How do you feel about sleep?' },
-  { id: 'most', text: 'Do you sleep well most nights?' },
-  { id: 'meds', text: 'Are you on medication?' },
-  { id: 'chronic', text: 'Do you have a chronic problem?' },
-  { id: 'through', text: 'How many nights a week do you sleep soundly all the way through?' },
+  { id: 'well',    text: 'How well do you sleep?', type: 'scale' },
+  { id: 'rested',  text: 'Do you wake up feeling rested?', type: 'yesno' },
+  { id: 'hours',   text: 'How many hours per night?', type: 'number', unit: 'hrs' },
+  { id: 'fall',    text: 'How long does it take to fall asleep?', type: 'number', unit: 'min' },
+  { id: 'feel',    text: 'How do you feel about sleep?', type: 'scale' },
+  { id: 'most',    text: 'Do you sleep well most nights?', type: 'yesno' },
+  { id: 'meds',    text: 'Are you on sleep medication?', type: 'yesno' },
+  { id: 'chronic', text: 'Do you have a chronic sleep problem?', type: 'yesno' },
+  { id: 'through', text: 'Nights per week you sleep all the way through', type: 'number', unit: 'nights', min: 0, max: 7 },
 ];
 
 const desiredSleepItems = [
-  { id: 'want', text: 'How do you want to sleep?' },
-  { id: 'know', text: 'How will you know if you are sleeping well enough?' },
-  { id: 'quickly', text: 'How quickly do you fall asleep?' },
-  { id: 'deep', text: 'How deeply do you want to sleep each night?' },
-  { id: 'wake', text: 'How do you want to feel when you wake up?' },
+  { id: 'want',    text: 'How well do you want to sleep?', type: 'scale' },
+  { id: 'know',    text: 'How will you know you\'re sleeping well enough?', type: 'text', placeholder: 'A sign you\'d notice…' },
+  { id: 'quickly', text: 'How quickly do you want to fall asleep?', type: 'number', unit: 'min' },
+  { id: 'deep',    text: 'How deeply do you want to sleep?', type: 'scale' },
+  { id: 'wake',    text: 'How do you want to feel when you wake up?', type: 'text', placeholder: 'Rested, clear, energized…' },
 ];
 
 export const chapter03 = {

@@ -481,6 +481,78 @@ function scaleBlock(chapter, section, block) {
   );
 }
 
+function renderEvalControl(key, item) {
+  const type = item.type || 'scale';
+  const current = store.get(key);
+
+  if (type === 'yesno') {
+    const row = el('div', { class: 'yesno-row' });
+    const btns = [];
+    for (const val of ['no', 'yes']) {
+      const b = el('button', {
+        'aria-pressed': String(current === val),
+        onclick: () => {
+          store.set(key, val);
+          for (const x of btns) x.setAttribute('aria-pressed', String(x.dataset.v === val));
+        },
+      }, val === 'yes' ? 'Yes' : 'No');
+      b.dataset.v = val;
+      btns.push(b);
+      row.append(b);
+    }
+    return row;
+  }
+
+  if (type === 'number') {
+    const row = el('div', { class: 'num-row' });
+    const input = el('input', {
+      type: 'text',
+      inputmode: 'numeric',
+      pattern: '[0-9]*',
+      placeholder: '—',
+    });
+    input.value = current ?? '';
+    input.addEventListener('input', () => {
+      const raw = input.value.replace(/[^0-9.]/g, '');
+      if (raw !== input.value) input.value = raw;
+      store.set(key, raw === '' ? null : Number(raw));
+    });
+    row.append(input);
+    if (item.unit) row.append(el('span', { class: 'unit' }, item.unit));
+    return row;
+  }
+
+  if (type === 'text') {
+    const row = el('div', { class: 'text-row' });
+    const input = el('input', {
+      type: 'text',
+      placeholder: item.placeholder || '',
+    });
+    input.value = current ?? '';
+    input.addEventListener('input', () => store.set(key, input.value));
+    row.append(input);
+    return row;
+  }
+
+  // default: 1–10 (or item.min–item.max) scale
+  const row = el('div', { class: 'scale-row' });
+  const buttons = [];
+  const min = item.min ?? 1;
+  const max = item.max ?? 10;
+  for (let i = min; i <= max; i++) {
+    const b = el('button', {
+      'aria-pressed': String(current === i),
+      onclick: () => {
+        store.set(key, i);
+        for (const btn of buttons) btn.setAttribute('aria-pressed', String(Number(btn.textContent) === i));
+      },
+    }, String(i));
+    buttons.push(b);
+    row.append(b);
+  }
+  return row;
+}
+
 function evaluationBlock(chapter, section, block) {
   const wrap = el('div', { class: 'block evaluation' });
   wrap.append(el('h3', {}, block.title));
@@ -493,23 +565,9 @@ function evaluationBlock(chapter, section, block) {
     const box = el('div', { class: 'eval-items' });
     for (const item of block.items) {
       const key = keyFor(chapter, section, block, `${active}:${item.id}`);
-      const current = store.get(key);
-      const row = el('div', { class: 'scale-row' });
-      const buttons = [];
-      for (let i = (item.min ?? 1); i <= (item.max ?? 10); i++) {
-        const b = el('button', {
-          'aria-pressed': String(current === i),
-          onclick: () => {
-            store.set(key, i);
-            for (const btn of buttons) btn.setAttribute('aria-pressed', String(Number(btn.textContent) === i));
-          },
-        }, String(i));
-        buttons.push(b);
-        row.append(b);
-      }
       box.append(el('div', { class: 'item' },
         el('div', { class: 'q' }, item.text),
-        row,
+        renderEvalControl(key, item),
       ));
     }
     wrap.append(box);

@@ -459,26 +459,81 @@ input, textarea, select {
 }
 .scale-row {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 3px;
 }
 .scale-row button {
   appearance: none;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--ink);
-  min-width: 32px;
+  flex: 1 1 0;
+  min-width: 0;
   height: 36px;
+  padding: 0;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
-  flex: 1;
 }
 .scale-row button[aria-pressed="true"] {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
+}
+
+/* Yes/No two-button pair */
+.yesno-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.yesno-row button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  height: 42px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+.yesno-row button[aria-pressed="true"] {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* Number input with an inline unit label */
+.num-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.num-row input {
+  flex: 0 1 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: center;
+}
+.num-row .unit {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Short-text answer, distinct from a full journal textarea */
+.text-row input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
 }
 
 .eval-tabs {
