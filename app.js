@@ -503,12 +503,6 @@ async function afterSignIn() {
   render();
 }
 
-// If a save comes back 401 (e.g. env var changed on Netlify), force re-auth.
-store.onStatus((s) => {
-  if (s === 'unauth') {
-    markInvalid();
-    renderSignIn('Passphrase no longer valid. Re-enter to continue.').then(waitForSignIn);
-  }
-});
+// (auth temporarily disabled — no re-prompt on 401.)
 
 boot();

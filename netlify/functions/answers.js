@@ -1,43 +1,12 @@
 import { getStore } from '@netlify/blobs';
-import { timingSafeEqual } from 'node:crypto';
+
+// TEMPORARY: passphrase gate disabled while we investigate why correct
+// passphrases were rejected in production. See GitHub issue for details.
+// Restore checkPassphrase from git history (commit e267cfd) once resolved.
 
 const KEY = 'user:default';
 
-function checkPassphrase(req) {
-  const expected = (process.env.APP_PASSPHRASE || '').trim();
-  const debug = { expectedLen: expected.length, hasHeader: false };
-  if (!expected) { console.log('AUTH', JSON.stringify(debug)); return false; }
-  const header = req.headers.get('authorization') || '';
-  debug.hasHeader = !!header;
-  debug.headerLen = header.length;
-  debug.headerPrefix = header.slice(0, 12);
-  const m = header.match(/^Bearer\s+(.+)$/i);
-  if (!m) { console.log('AUTH', JSON.stringify(debug)); return false; }
-  const raw = m[1].trim();
-  debug.rawLen = raw.length;
-  let provided;
-  try { provided = Buffer.from(raw, 'base64').toString('utf8'); }
-  catch { provided = raw; }
-  debug.decodedLen = provided.length;
-  const candidates = [provided, raw];
-  for (const cand of candidates) {
-    const a = Buffer.from(cand);
-    const b = Buffer.from(expected);
-    if (a.length !== b.length) continue;
-    try {
-      if (timingSafeEqual(a, b)) {
-        console.log('AUTH', JSON.stringify({ ...debug, matched: true }));
-        return true;
-      }
-    } catch {}
-  }
-  console.log('AUTH', JSON.stringify({ ...debug, matched: false }));
-  return false;
-}
-
 export default async (req) => {
-  if (!checkPassphrase(req)) return new Response('Unauthorized', { status: 401 });
-
   const store = getStore({ name: 'answers', consistency: 'strong' });
 
   if (req.method === 'GET') {
