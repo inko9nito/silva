@@ -7,8 +7,9 @@ journaling bundled in each chapter/section.
 Optimised for iPhone 13 mini (375 × 812) and installable as a PWA — Safari's
 **Share → Add to Home Screen** turns it into a standalone app.
 
-Answers sync to **Netlify Blobs** (server-side, per Google account) so you can
-open the app on any device and pick up where you left off.
+Answers sync to **Netlify Blobs** so you can open the app on any device and
+pick up where you left off. Access is gated by a passphrase you set as a
+Netlify environment variable.
 
 ## Project layout
 
@@ -16,88 +17,87 @@ open the app on any device and pick up where you left off.
 index.html          shell
 styles.css          mobile-first styles, light + dark auto
 app.js              router, screens, block renderers
-auth.js             Google Identity Services (Sign in with Google)
+auth.js             passphrase prompt + localStorage token
 store.js            debounced read/write against /api/answers
 data/               course content (one file per chapter)
 netlify.toml        Netlify build + redirects
 netlify/functions/
-  config.js         GET /api/config → { googleClientId }
+  config.js         GET /api/config → { ok }
   answers.js        GET / PUT /api/answers → Netlify Blobs
-  package.json      @netlify/blobs + google-auth-library
+  package.json      @netlify/blobs
 ```
 
 ## First-time deployment (Netlify)
 
-You need a Google OAuth **Web** client ID and a Netlify site.
-
-### 1. Create the Google OAuth client
-
-1. Go to <https://console.cloud.google.com/apis/credentials>.
-2. **Create Credentials → OAuth client ID → Web application**.
-3. Under *Authorized JavaScript origins* add:
-   - `http://localhost:8080` (for local testing)
-   - your Netlify URL, e.g. `https://silva-workbook.netlify.app`
-   - your custom domain if you have one
-4. Copy the **Client ID** (looks like `12345-abc.apps.googleusercontent.com`).
-
-### 2. Create the Netlify site
+### 1. Create the Netlify site
 
 1. In Netlify: **Add new site → Import an existing project → GitHub**.
 2. Pick this repo, branch `main`.
 3. Build command: leave blank. Publish directory: `.` (the repo root).
-4. Deploy — the first build installs `netlify/functions/package.json` for you.
+4. Deploy — the first build installs `netlify/functions/package.json`.
+5. Optional: **Site configuration → Change site name** to something you'll
+   recognise, e.g. `silvamethod`. Your URL becomes
+   `https://silvamethod.netlify.app`.
 
-### 3. Set environment variables (Site settings → Environment variables)
+### 2. Set the passphrase
 
-| Key                | Value                                           |
-| ------------------ | ----------------------------------------------- |
-| `GOOGLE_CLIENT_ID` | The Web client ID from step 1                   |
-| `ALLOWED_EMAILS`   | Your Gmail address (comma-separated if more)    |
+**Site configuration → Environment variables → Add a variable**:
 
-`ALLOWED_EMAILS` is the guest list — only these Google accounts can read or
-write. If you leave it blank, **any** Google account gets access — leave it
-set.
+| Key              | Value                                                       |
+| ---------------- | ----------------------------------------------------------- |
+| `APP_PASSPHRASE` | Any secret string — anyone who knows it can read and write. |
 
-### 4. Enable Netlify Blobs
+Pick something long (14+ chars). It's the only lock on your data, so treat
+it like a password.
 
-Netlify Blobs is on by default for new sites. If a request returns "no blob
-store" during first use, open **Site → Integrations → Netlify Blobs** and
-turn it on. There is nothing else to configure.
+### 3. Trigger a deploy and open it on your phone
 
-### 5. Trigger a deploy and open it on your phone
+- **Deploys → Trigger deploy → Deploy site** (env vars take effect on the
+  next deploy).
+- When it goes green, open the Netlify URL in Safari.
+- Enter your passphrase once — it's remembered on that device.
+- **Share → Add to Home Screen** to install the standalone app.
 
-- Push to `main` or hit **Trigger deploy** in Netlify.
-- Open the site in Safari on your iPhone.
-- Tap **Share → Add to Home Screen** to install it as a standalone app.
-- Sign in with Google the first time; the token refreshes silently after that.
+### 4. Add more devices
+
+Open the URL on any browser, enter the same passphrase, and you'll see the
+same answers. Change the passphrase in Netlify to lock everyone out and
+force fresh entries.
+
+## Data & backup
+
+- All answers live in a single JSON blob at `answers/user:default` in
+  Netlify Blobs. You can browse and export it from the Netlify UI
+  (**Integrations → Netlify Blobs**).
+- The app's **Settings → Download JSON backup** exports the same object as
+  a local file.
 
 ## Running it locally
-
-Netlify Functions run through the Netlify CLI, so the auth + storage layer
-needs it locally too:
 
 ```bash
 npm install -g netlify-cli
 netlify init         # link to your Netlify site
-netlify env:pull     # download GOOGLE_CLIENT_ID / ALLOWED_EMAILS
-netlify dev          # serves index.html + functions on http://localhost:8888
+netlify env:pull     # download APP_PASSPHRASE
+netlify dev          # serves everything on http://localhost:8888
 ```
 
-`http://localhost:8888` must be in the OAuth client's *Authorized JavaScript
-origins* for sign-in to work locally.
-
-If you only want to preview the UI (no sign-in, no saving), a plain static
-server works:
-
-```bash
-python3 -m http.server 8080
-```
+For pure UI preview without the backend, `python3 -m http.server 8080` works
+too — the app just can't read or save.
 
 ## Adding audio later
 
 Exercises that reference a guided audio have an `audio-placeholder` block.
-When you have the MP3s, we can swap those for a small player wired up to
-files served from `/audio/` (or from a Netlify Blob).
+When you have the MP3s, we can swap those for a small player.
+
+## Upgrading to Google Sign-In later
+
+The `auth.js`/`store.js` interface is the same either way. If you decide to
+add Google Sign-In later (or per-user accounts for friends), the swap is:
+
+1. Restore the Google-auth version of `auth.js` + `netlify/functions/answers.js`
+   (kept in git history — commit `c728538`).
+2. Set `GOOGLE_CLIENT_ID` and `ALLOWED_EMAILS` env vars instead of
+   `APP_PASSPHRASE`.
 
 ## Development branching
 

@@ -1,5 +1,5 @@
 import { chapters } from './data/index.js';
-import { initAuth, renderSignInButton, currentProfile, signOut, hasValidToken } from './auth.js';
+import { initAuth, currentProfile, signOut, hasValidToken, submitPassphrase, verifyPassphrase, markInvalid } from './auth.js';
 import * as store from './store.js';
 
 /* ----- Save indicator ----- */
@@ -76,28 +76,53 @@ function topbar(title, backTo, rightSlot) {
 
 /* ----- Sign-in screen ----- */
 async function renderSignIn(errorMsg) {
-  app.innerHTML = '';
-  const container = el('div', { class: 'app' },
+  const root = document.getElementById('app') || app;
+  root.innerHTML = '';
+  const errBox = el('div', { class: 'signin-err' }, errorMsg || '');
+  if (!errorMsg) errBox.style.visibility = 'hidden';
+  const input = el('input', {
+    type: 'password',
+    inputmode: 'text',
+    autocomplete: 'current-password',
+    autocapitalize: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
+    placeholder: 'Passphrase',
+    class: 'pw-input',
+  });
+  const submit = el('button', { class: 'pw-submit', type: 'submit' }, 'Unlock');
+  const form = el('form', {
+    class: 'pw-form',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      const pw = input.value.trim();
+      if (!pw) return;
+      submit.disabled = true;
+      submit.textContent = 'Checking…';
+      const ok = await verifyPassphrase(pw);
+      if (ok) {
+        submitPassphrase(pw);
+      } else {
+        submit.disabled = false;
+        submit.textContent = 'Unlock';
+        errBox.textContent = 'Incorrect passphrase.';
+        errBox.style.visibility = 'visible';
+        input.select();
+      }
+    },
+  }, input, submit);
+  root.append(
     el('div', { class: 'signin' },
       el('div', { class: 'signin-inner' },
         el('div', { class: 'signin-mark' }, '☯'),
         el('h1', {}, 'Silva Companion'),
-        el('p', {}, 'Sign in with the Google account you use for the workbook.'),
-        el('div', { id: 'g-btn', class: 'g-btn-wrap' }),
-        errorMsg ? el('div', { class: 'signin-err' }, errorMsg) : null,
+        el('p', {}, 'Enter your passphrase.'),
+        form,
+        errBox,
       ),
     ),
   );
-  app.replaceWith(container);
-  container.id = 'app';
-  try {
-    await initAuth();
-    renderSignInButton(document.getElementById('g-btn'));
-  } catch (e) {
-    document.getElementById('g-btn').append(
-      el('div', { class: 'signin-err' }, `Sign-in unavailable: ${e.message}`)
-    );
-  }
+  setTimeout(() => input.focus(), 50);
 }
 
 /* ----- Render ----- */
@@ -448,12 +473,7 @@ function evaluationBlock(chapter, section, block) {
 
 /* ----- Boot ----- */
 async function boot() {
-  try {
-    await initAuth();
-  } catch (e) {
-    await renderSignIn(e.message);
-    return;
-  }
+  await initAuth();
   if (!hasValidToken()) {
     await renderSignIn();
     waitForSignIn();
@@ -474,12 +494,21 @@ function waitForSignIn() {
 async function afterSignIn() {
   try { await store.loadInitial(); }
   catch (e) {
-    await renderSignIn('Could not sign you in. Try again.');
+    markInvalid();
+    await renderSignIn('Could not unlock — check the passphrase.');
     waitForSignIn();
     return;
   }
   window.addEventListener('hashchange', render);
   render();
 }
+
+// If a save comes back 401 (e.g. env var changed on Netlify), force re-auth.
+store.onStatus((s) => {
+  if (s === 'unauth') {
+    markInvalid();
+    renderSignIn('Passphrase no longer valid. Re-enter to continue.').then(waitForSignIn);
+  }
+});
 
 boot();

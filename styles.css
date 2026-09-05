@@ -563,10 +563,49 @@ body {
   display: flex;
   justify-content: center;
 }
+.pw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.pw-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.pw-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.pw-submit {
+  appearance: none;
+  border: 0;
+  background: var(--accent);
+  color: white;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  min-height: 48px;
+}
+.pw-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .signin-err {
   margin-top: 12px;
   color: var(--danger);
   font-size: 13px;
+  min-height: 18px;
 }
 
 /* --- Settings --- */
