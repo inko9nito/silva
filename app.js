@@ -1,40 +1,37 @@
 import { chapters } from './data/index.js';
+import { initAuth, renderSignInButton, currentProfile, signOut, hasValidToken } from './auth.js';
+import * as store from './store.js';
 
-const STORAGE_KEY = 'silva:answers:v1';
-const store = {
-  data: null,
-  load() {
-    try { this.data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-    catch { this.data = {}; }
-    return this.data;
-  },
-  get(key) {
-    if (!this.data) this.load();
-    return this.data[key];
-  },
-  set(key, value) {
-    if (!this.data) this.load();
-    this.data[key] = value;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data)); }
-    catch {}
-    flashSaved();
-  },
-};
-
-let savedTimer = null;
-function flashSaved() {
+/* ----- Save indicator ----- */
+let saveTimer = null;
+function updateSavedTag(status) {
   const tag = document.querySelector('.saved-tag');
   if (!tag) return;
-  tag.classList.add('on');
-  clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => tag.classList.remove('on'), 900);
+  tag.classList.remove('on', 'saving', 'error');
+  if (status === 'saving' || status === 'dirty') {
+    tag.textContent = 'Saving…';
+    tag.classList.add('on', 'saving');
+  } else if (status === 'saved') {
+    tag.textContent = 'Saved';
+    tag.classList.add('on');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => tag.classList.remove('on'), 900);
+  } else if (status === 'error') {
+    tag.textContent = 'Save error';
+    tag.classList.add('on', 'error');
+  } else if (status === 'unauth') {
+    tag.textContent = 'Sign in again';
+    tag.classList.add('on', 'error');
+  }
 }
+store.onStatus(updateSavedTag);
 
 /* ----- Router ----- */
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '');
   if (!h) return { name: 'home' };
   const parts = h.split('/').filter(Boolean);
+  if (parts[0] === 'settings') return { name: 'settings' };
   if (parts[0] === 'ch' && parts[1]) {
     const chapter = chapters.find(c => c.id === parts[1]);
     if (!chapter) return { name: 'home' };
@@ -46,20 +43,10 @@ function parseRoute() {
   }
   return { name: 'home' };
 }
-
 function nav(path) { location.hash = path; }
 
-/* ----- Render ----- */
+/* ----- DOM helpers ----- */
 const app = document.getElementById('app');
-
-function render() {
-  const route = parseRoute();
-  app.innerHTML = '';
-  if (route.name === 'home') renderHome();
-  else if (route.name === 'chapter') renderChapter(route.chapter);
-  else if (route.name === 'section') renderSection(route.chapter, route.section);
-  window.scrollTo(0, 0);
-}
 
 function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
@@ -77,47 +64,88 @@ function el(tag, attrs = {}, ...kids) {
   return n;
 }
 
-function topbar(title, backTo) {
+function topbar(title, backTo, rightSlot) {
   return el('div', { class: 'topbar' },
     backTo != null
       ? el('button', { class: 'back', onclick: () => nav(backTo) }, '‹ Back')
       : el('span', { class: 'spacer' }),
     el('h1', {}, title, el('span', { class: 'saved-tag' }, 'Saved')),
-    el('span', { class: 'spacer' })
+    rightSlot || el('span', { class: 'spacer' }),
   );
+}
+
+/* ----- Sign-in screen ----- */
+async function renderSignIn(errorMsg) {
+  app.innerHTML = '';
+  const container = el('div', { class: 'app' },
+    el('div', { class: 'signin' },
+      el('div', { class: 'signin-inner' },
+        el('div', { class: 'signin-mark' }, '☯'),
+        el('h1', {}, 'Silva Companion'),
+        el('p', {}, 'Sign in with the Google account you use for the workbook.'),
+        el('div', { id: 'g-btn', class: 'g-btn-wrap' }),
+        errorMsg ? el('div', { class: 'signin-err' }, errorMsg) : null,
+      ),
+    ),
+  );
+  app.replaceWith(container);
+  container.id = 'app';
+  try {
+    await initAuth();
+    renderSignInButton(document.getElementById('g-btn'));
+  } catch (e) {
+    document.getElementById('g-btn').append(
+      el('div', { class: 'signin-err' }, `Sign-in unavailable: ${e.message}`)
+    );
+  }
+}
+
+/* ----- Render ----- */
+function render() {
+  const route = parseRoute();
+  const root = document.getElementById('app');
+  root.innerHTML = '';
+  if (route.name === 'home') renderHome();
+  else if (route.name === 'chapter') renderChapter(route.chapter);
+  else if (route.name === 'section') renderSection(route.chapter, route.section);
+  else if (route.name === 'settings') renderSettings();
+  window.scrollTo(0, 0);
+}
+
+function renderHome() {
+  const profile = currentProfile();
+  const settings = el('button', {
+    class: 'back settings-btn',
+    onclick: () => nav('#/settings'),
+  }, profile?.picture
+    ? el('img', { class: 'avatar', src: profile.picture, alt: '' })
+    : document.createTextNode('⚙︎'));
+  const content = el('div', { class: 'content' });
+  const main = chapters.filter(c => !c.reference);
+  const refs = chapters.filter(c => c.reference);
+  content.append(
+    el('div', { class: 'hero' },
+      el('h2', {}, 'Silva Life System'),
+      el('p', {}, profile?.name ? `Welcome back, ${profile.name.split(' ')[0]}.` : 'A companion workbook for the course.')
+    ),
+    el('div', { class: 'section-label' }, 'Chapters'),
+    el('div', { class: 'chapter-list' }, ...main.map(chapterCard)),
+    refs.length ? el('div', { class: 'section-label' }, 'Reference') : null,
+    refs.length ? el('div', { class: 'chapter-list' }, ...refs.map(chapterCard)) : null,
+  );
+  document.getElementById('app').append(topbar('Silva Companion', null, settings), content);
 }
 
 function chapterProgress(chapter) {
   const total = chapter.sections.length;
-  const done = chapter.sections.filter(s => sectionHasAnyAnswer(chapter, s)).length;
+  const done = chapter.sections.filter(s => store.has(`${chapter.id}:${s.id}:`)).length;
   return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
-}
-
-function sectionHasAnyAnswer(chapter, section) {
-  const prefix = `${chapter.id}:${section.id}:`;
-  for (const k of Object.keys(store.load())) {
-    if (k.startsWith(prefix)) return true;
-  }
-  return false;
-}
-
-function renderHome() {
-  const content = el('div', { class: 'content' });
-  content.append(
-    el('div', { class: 'hero' },
-      el('h2', {}, 'Silva Life System'),
-      el('p', {}, 'A companion workbook for the course. Your answers stay on this device.')
-    ),
-    el('div', { class: 'section-label' }, 'Chapters'),
-    el('div', { class: 'chapter-list' }, ...chapters.map(chapterCard))
-  );
-  app.append(topbar('Silva Companion'), content);
 }
 
 function chapterCard(chapter) {
   const p = chapterProgress(chapter);
   return el('a', { class: 'chapter-card', href: `#/ch/${chapter.id}` },
-    el('div', { class: 'num' }, `Chapter ${chapter.number}`),
+    el('div', { class: 'num' }, chapter.reference ? 'Reference' : `Chapter ${chapter.number}`),
     el('div', { class: 'title' }, chapter.title),
     el('div', { class: 'meta' },
       el('div', { class: 'progress' }, el('span', { style: `width:${p.pct}%` })),
@@ -130,18 +158,19 @@ function renderChapter(chapter) {
   const content = el('div', { class: 'content' });
   content.append(
     el('div', { class: 'hero' },
-      el('div', { class: 'section-label', style: 'margin: 0 0 4px' }, `Chapter ${chapter.number}`),
+      el('div', { class: 'section-label', style: 'margin: 0 0 4px' },
+        chapter.reference ? 'Reference' : `Chapter ${chapter.number}`),
       el('h2', {}, chapter.title),
       chapter.subtitle ? el('p', {}, chapter.subtitle) : null,
     ),
     el('div', { class: 'section-label' }, 'Sections'),
     el('div', { class: 'section-list' }, ...chapter.sections.map((s, i) => sectionCard(chapter, s, i)))
   );
-  app.append(topbar(chapter.title, '/'), content);
+  document.getElementById('app').append(topbar(chapter.title, '/'), content);
 }
 
 function sectionCard(chapter, section, idx) {
-  const done = sectionHasAnyAnswer(chapter, section);
+  const done = store.has(`${chapter.id}:${section.id}:`);
   return el('a', {
     class: `section-card${done ? ' done' : ''}`,
     href: `#/ch/${chapter.id}/s/${section.id}`,
@@ -160,7 +189,11 @@ function renderSection(chapter, section) {
   for (const block of section.blocks) {
     content.append(renderBlock(chapter, section, block));
   }
-  app.append(topbar(section.title, `#/ch/${chapter.id}`), content, sectionNav(chapter, section));
+  document.getElementById('app').append(
+    topbar(section.title, `#/ch/${chapter.id}`),
+    content,
+    sectionNav(chapter, section),
+  );
 }
 
 function sectionNav(chapter, section) {
@@ -177,6 +210,53 @@ function sectionNav(chapter, section) {
       onclick: () => next && nav(`#/ch/${chapter.id}/s/${next.id}`),
     }, next ? 'Next section ›' : 'End of chapter'),
   );
+}
+
+function renderSettings() {
+  const profile = currentProfile();
+  const content = el('div', { class: 'content' });
+  content.append(
+    el('div', { class: 'hero' }, el('h2', {}, 'Settings')),
+    el('div', { class: 'section-label' }, 'Account'),
+    el('div', { class: 'setting-card' },
+      profile?.picture ? el('img', { class: 'avatar big', src: profile.picture, alt: '' }) : null,
+      el('div', {},
+        el('div', { class: 'name' }, profile?.name || 'Signed in'),
+        el('div', { class: 'sub' }, profile?.email || ''),
+      ),
+    ),
+    el('button', {
+      class: 'danger-btn',
+      onclick: async () => {
+        signOut();
+        location.hash = '#/';
+        await renderSignIn();
+      },
+    }, 'Sign out'),
+    el('div', { class: 'section-label' }, 'Sync'),
+    el('div', { class: 'setting-card small' },
+      el('div', {}, 'Your answers sync to Netlify Blobs, keyed to your Google email.'),
+    ),
+    el('button', {
+      class: 'plain-btn',
+      onclick: async () => {
+        await store.forceFlush();
+      },
+    }, 'Sync now'),
+    el('div', { class: 'section-label' }, 'Export'),
+    el('button', {
+      class: 'plain-btn',
+      onclick: () => {
+        const blob = new Blob([JSON.stringify(store.snapshot(), null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'silva-answers.json';
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      },
+    }, 'Download JSON backup'),
+  );
+  document.getElementById('app').append(topbar('Settings', '/'), content);
 }
 
 /* ----- Blocks ----- */
@@ -230,6 +310,14 @@ function renderBlock(chapter, section, block) {
         )
       )
     );
+    case 'audio-placeholder': return el('div', { class: 'block audio-placeholder' },
+      el('div', { class: 'audio-icon' }, '♪'),
+      el('div', { class: 'audio-body' },
+        el('div', { class: 'audio-title' }, block.title || 'Audio track'),
+        block.description ? el('div', { class: 'audio-desc' }, block.description) : null,
+        el('div', { class: 'audio-hint' }, 'Audio not yet uploaded.'),
+      ),
+    );
     case 'reflection': return reflectionBlock(chapter, section, block);
     case 'journal': return journalBlock(chapter, section, block);
     case 'goal': return goalBlock(chapter, section, block);
@@ -241,7 +329,7 @@ function renderBlock(chapter, section, block) {
 }
 
 function keyFor(chapter, section, block, extra = '') {
-  return `${chapter.id}:${section.id}:${block.id}${extra ? ':' + extra : ''}`;
+  return `${chapter.id}:${section.id}:${block.id || block.type}${extra ? ':' + extra : ''}`;
 }
 
 function reflectionBlock(chapter, section, block) {
@@ -359,5 +447,39 @@ function evaluationBlock(chapter, section, block) {
 }
 
 /* ----- Boot ----- */
-window.addEventListener('hashchange', render);
-render();
+async function boot() {
+  try {
+    await initAuth();
+  } catch (e) {
+    await renderSignIn(e.message);
+    return;
+  }
+  if (!hasValidToken()) {
+    await renderSignIn();
+    waitForSignIn();
+    return;
+  }
+  await afterSignIn();
+}
+
+function waitForSignIn() {
+  const interval = setInterval(() => {
+    if (hasValidToken()) {
+      clearInterval(interval);
+      afterSignIn();
+    }
+  }, 400);
+}
+
+async function afterSignIn() {
+  try { await store.loadInitial(); }
+  catch (e) {
+    await renderSignIn('Could not sign you in. Try again.');
+    waitForSignIn();
+    return;
+  }
+  window.addEventListener('hashchange', render);
+  render();
+}
+
+boot();
