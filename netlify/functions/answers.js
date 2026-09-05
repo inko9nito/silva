@@ -5,24 +5,33 @@ const KEY = 'user:default';
 
 function checkPassphrase(req) {
   const expected = (process.env.APP_PASSPHRASE || '').trim();
-  if (!expected) return false;
+  const debug = { expectedLen: expected.length, hasHeader: false };
+  if (!expected) { console.log('AUTH', JSON.stringify(debug)); return false; }
   const header = req.headers.get('authorization') || '';
+  debug.hasHeader = !!header;
+  debug.headerLen = header.length;
+  debug.headerPrefix = header.slice(0, 12);
   const m = header.match(/^Bearer\s+(.+)$/i);
-  if (!m) return false;
+  if (!m) { console.log('AUTH', JSON.stringify(debug)); return false; }
   const raw = m[1].trim();
-  // Client base64-encodes so passphrases with spaces / punctuation survive
-  // the Authorization header. Fall back to raw for older clients.
+  debug.rawLen = raw.length;
   let provided;
   try { provided = Buffer.from(raw, 'base64').toString('utf8'); }
   catch { provided = raw; }
-  // A non-base64 string won't decode to the intended value; also compare raw.
+  debug.decodedLen = provided.length;
   const candidates = [provided, raw];
   for (const cand of candidates) {
     const a = Buffer.from(cand);
     const b = Buffer.from(expected);
     if (a.length !== b.length) continue;
-    try { if (timingSafeEqual(a, b)) return true; } catch {}
+    try {
+      if (timingSafeEqual(a, b)) {
+        console.log('AUTH', JSON.stringify({ ...debug, matched: true }));
+        return true;
+      }
+    } catch {}
   }
+  console.log('AUTH', JSON.stringify({ ...debug, matched: false }));
   return false;
 }
 
