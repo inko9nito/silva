@@ -1,5 +1,5 @@
 import { chapters } from './data/index.js';
-import { initAuth, currentProfile, signOut, hasValidToken, submitPassphrase, verifyPassphrase, markInvalid } from './auth.js';
+import { currentProfile, signOut } from './auth.js';
 import * as store from './store.js';
 
 /* ----- Save indicator ----- */
@@ -74,55 +74,27 @@ function topbar(title, backTo, rightSlot) {
   );
 }
 
-/* ----- Sign-in screen ----- */
-async function renderSignIn(errorMsg) {
+/* ----- Loading / error splash ----- */
+function renderSplash(state, onRetry) {
   const root = document.getElementById('app') || app;
   root.innerHTML = '';
-  const errBox = el('div', { class: 'signin-err' }, errorMsg || '');
-  if (!errorMsg) errBox.style.visibility = 'hidden';
-  const input = el('input', {
-    type: 'password',
-    inputmode: 'text',
-    autocomplete: 'current-password',
-    autocapitalize: 'off',
-    autocorrect: 'off',
-    spellcheck: 'false',
-    placeholder: 'Passphrase',
-    class: 'pw-input',
-  });
-  const submit = el('button', { class: 'pw-submit', type: 'submit' }, 'Unlock');
-  const form = el('form', {
-    class: 'pw-form',
-    onsubmit: async (e) => {
-      e.preventDefault();
-      const pw = input.value.trim();
-      if (!pw) return;
-      submit.disabled = true;
-      submit.textContent = 'Checking…';
-      const ok = await verifyPassphrase(pw);
-      if (ok) {
-        submitPassphrase(pw);
-      } else {
-        submit.disabled = false;
-        submit.textContent = 'Unlock';
-        errBox.textContent = 'Incorrect passphrase.';
-        errBox.style.visibility = 'visible';
-        input.select();
-      }
-    },
-  }, input, submit);
-  root.append(
-    el('div', { class: 'signin' },
-      el('div', { class: 'signin-inner' },
-        el('div', { class: 'signin-mark' }, '☯'),
-        el('h1', {}, 'Silva Companion'),
-        el('p', {}, 'Enter your passphrase.'),
-        form,
-        errBox,
-      ),
-    ),
+  const inner = el('div', { class: 'signin-inner' },
+    el('div', { class: 'signin-mark' }, '☯'),
+    el('h1', {}, 'Silva Companion'),
   );
-  setTimeout(() => input.focus(), 50);
+  if (state === 'loading') {
+    inner.append(el('p', {}, 'Loading your workbook…'));
+  } else {
+    inner.append(
+      el('p', {}, 'Couldn\'t reach the server. Your saved answers are safe — just try again.'),
+      el('button', {
+        class: 'pw-submit',
+        style: 'margin-top: 8px;',
+        onclick: onRetry,
+      }, 'Retry'),
+    );
+  }
+  root.append(el('div', { class: 'signin' }, inner));
 }
 
 /* ----- Render ----- */
@@ -472,37 +444,19 @@ function evaluationBlock(chapter, section, block) {
 }
 
 /* ----- Boot ----- */
+let hashBound = false;
 async function boot() {
-  await initAuth();
-  if (!hasValidToken()) {
-    await renderSignIn();
-    waitForSignIn();
-    return;
-  }
-  await afterSignIn();
-}
-
-function waitForSignIn() {
-  const interval = setInterval(() => {
-    if (hasValidToken()) {
-      clearInterval(interval);
-      afterSignIn();
-    }
-  }, 400);
-}
-
-async function afterSignIn() {
+  renderSplash('loading');
   try { await store.loadInitial(); }
   catch (e) {
-    markInvalid();
-    await renderSignIn('Could not unlock — check the passphrase.');
-    waitForSignIn();
+    renderSplash('error', boot);
     return;
   }
-  window.addEventListener('hashchange', render);
+  if (!hashBound) {
+    window.addEventListener('hashchange', render);
+    hashBound = true;
+  }
   render();
 }
-
-// (auth temporarily disabled — no re-prompt on 401.)
 
 boot();
