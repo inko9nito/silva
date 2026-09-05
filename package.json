@@ -1,0 +1,8 @@
+{
+  "name": "silva-companion",
+  "private": true,
+  "description": "Silva Life System companion workbook — static site + Netlify Functions.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
