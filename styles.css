@@ -48,10 +48,41 @@ body {
 .app {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100vh;
-  padding: 0;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Each screen is a full-height layer that can scroll independently. */
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+.screen.animate {
+  transition: transform 340ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.screen[data-slide="right"]  { transform: translate3d(100%, 0, 0); }
+.screen[data-slide="left"]   { transform: translate3d(-24%, 0, 0); }
+.screen[data-slide="center"] { transform: translate3d(0, 0, 0); }
+
+/* The incoming forward screen casts a soft shadow onto the one it's covering. */
+.screen[data-slide="right"],
+.screen.animate[data-slide="center"]:not(:only-child) {
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.animate { transition: none; }
 }
 
 /* --- Top bar --- */
@@ -487,17 +518,19 @@ input, textarea, select {
 .glossary-term .def { font-size: 14px; color: var(--ink-soft); }
 
 /* --- Nav footer --- */
+/* Pinned to the bottom of its screen (screens are transformed, which
+   makes position: fixed resolve against the screen, not the viewport —
+   position: sticky at bottom is safer here and behaves the same). */
 .nav-footer {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
   padding: 10px 16px calc(var(--safe-bottom) + 10px);
   background: var(--bg);
   border-top: 1px solid var(--border);
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  max-width: 480px;
-  margin: 0 auto;
 }
 .nav-footer button {
   appearance: none;

@@ -1,5 +1,5 @@
 import { chapters } from './data/index.js';
-import { currentProfile, signOut } from './auth.js';
+import { currentProfile } from './auth.js';
 import * as store from './store.js';
 
 /* ----- Save indicator ----- */
@@ -18,9 +18,6 @@ function updateSavedTag(status) {
     saveTimer = setTimeout(() => tag.classList.remove('on'), 900);
   } else if (status === 'error') {
     tag.textContent = 'Save error';
-    tag.classList.add('on', 'error');
-  } else if (status === 'unauth') {
-    tag.textContent = 'Sign in again';
     tag.classList.add('on', 'error');
   }
 }
@@ -43,6 +40,23 @@ function parseRoute() {
   }
   return { name: 'home' };
 }
+
+function routeKey(route) {
+  if (route.name === 'home') return 'home';
+  if (route.name === 'settings') return 'settings';
+  if (route.name === 'chapter') return `ch:${route.chapter.id}`;
+  if (route.name === 'section') return `ch:${route.chapter.id}:s:${route.section.id}`;
+  return '';
+}
+
+function routeDepth(route) {
+  if (route.name === 'home') return 0;
+  if (route.name === 'settings') return 1;
+  if (route.name === 'chapter') return 1;
+  if (route.name === 'section') return 2;
+  return 0;
+}
+
 function nav(path) { location.hash = path; }
 
 /* ----- DOM helpers ----- */
@@ -74,9 +88,9 @@ function topbar(title, backTo, rightSlot) {
   );
 }
 
-/* ----- Loading / error splash ----- */
+/* ----- Loading / error splash (no transition) ----- */
 function renderSplash(state, onRetry) {
-  const root = document.getElementById('app') || app;
+  const root = document.getElementById('app');
   root.innerHTML = '';
   const inner = el('div', { class: 'signin-inner' },
     el('div', { class: 'signin-mark' }, '☯'),
@@ -97,19 +111,88 @@ function renderSplash(state, onRetry) {
       }, 'Retry'),
     );
   }
-  root.append(el('div', { class: 'signin' }, inner));
+  root.append(el('div', { class: 'signin screen' }, inner));
+}
+
+/* ----- Screen swap with iOS-style transition ----- */
+let currentKey = null;
+let currentDepth = -1;
+
+function swapScreens(newScreen, direction) {
+  const root = document.getElementById('app');
+  const oldScreens = Array.from(root.querySelectorAll('.screen'));
+
+  if (direction === 'none' || oldScreens.length === 0) {
+    root.innerHTML = '';
+    root.append(newScreen);
+    return;
+  }
+
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) {
+    root.innerHTML = '';
+    root.append(newScreen);
+    return;
+  }
+
+  // Place the incoming screen at its start position.
+  if (direction === 'forward') {
+    newScreen.setAttribute('data-slide', 'right');
+  } else {
+    newScreen.setAttribute('data-slide', 'left');
+  }
+  root.append(newScreen);
+
+  // Reflow so the browser accepts the starting state.
+  // eslint-disable-next-line no-unused-expressions
+  newScreen.offsetHeight;
+
+  requestAnimationFrame(() => {
+    newScreen.classList.add('animate');
+    newScreen.setAttribute('data-slide', 'center');
+    // Slide the current screen out in the opposite direction.
+    for (const old of oldScreens) {
+      old.classList.add('animate');
+      old.setAttribute('data-slide', direction === 'forward' ? 'left' : 'right');
+    }
+  });
+
+  const cleanup = () => {
+    for (const old of oldScreens) if (old.parentNode) old.parentNode.removeChild(old);
+    newScreen.classList.remove('animate');
+    newScreen.removeAttribute('data-slide');
+  };
+  let done = false;
+  const once = () => { if (done) return; done = true; cleanup(); };
+  newScreen.addEventListener('transitionend', once, { once: true });
+  setTimeout(once, 500);
 }
 
 /* ----- Render ----- */
 function render() {
   const route = parseRoute();
-  const root = document.getElementById('app');
-  root.innerHTML = '';
-  if (route.name === 'home') renderHome();
-  else if (route.name === 'chapter') renderChapter(route.chapter);
-  else if (route.name === 'section') renderSection(route.chapter, route.section);
-  else if (route.name === 'settings') renderSettings();
-  window.scrollTo(0, 0);
+  const key = routeKey(route);
+  const depth = routeDepth(route);
+
+  let screen;
+  if (route.name === 'home') screen = renderHome();
+  else if (route.name === 'chapter') screen = renderChapter(route.chapter);
+  else if (route.name === 'section') screen = renderSection(route.chapter, route.section);
+  else if (route.name === 'settings') screen = renderSettings();
+  if (!screen) return;
+
+  let direction = 'none';
+  if (currentKey !== null && key !== currentKey) {
+    direction = depth < currentDepth ? 'back' : 'forward';
+  }
+
+  swapScreens(screen, direction);
+  currentKey = key;
+  currentDepth = depth;
+}
+
+function newScreen() {
+  return el('div', { class: 'screen' });
 }
 
 function renderHome() {
@@ -126,14 +209,16 @@ function renderHome() {
   content.append(
     el('div', { class: 'hero' },
       el('h2', {}, 'Silva Life System'),
-      el('p', {}, profile?.name ? `Welcome back, ${profile.name.split(' ')[0]}.` : 'A companion workbook for the course.')
+      el('p', {}, 'A companion workbook for the course.')
     ),
     el('div', { class: 'section-label' }, 'Chapters'),
     el('div', { class: 'chapter-list' }, ...main.map(chapterCard)),
     refs.length ? el('div', { class: 'section-label' }, 'Reference') : null,
     refs.length ? el('div', { class: 'chapter-list' }, ...refs.map(chapterCard)) : null,
   );
-  document.getElementById('app').append(topbar('Silva Companion', null, settings), content);
+  const s = newScreen();
+  s.append(topbar('Silva Companion', null, settings), content);
+  return s;
 }
 
 function chapterProgress(chapter) {
@@ -166,7 +251,9 @@ function renderChapter(chapter) {
     el('div', { class: 'section-label' }, 'Sections'),
     el('div', { class: 'section-list' }, ...chapter.sections.map((s, i) => sectionCard(chapter, s, i)))
   );
-  document.getElementById('app').append(topbar(chapter.title, '/'), content);
+  const s = newScreen();
+  s.append(topbar(chapter.title, '/'), content);
+  return s;
 }
 
 function sectionCard(chapter, section, idx) {
@@ -189,11 +276,13 @@ function renderSection(chapter, section) {
   for (const block of section.blocks) {
     content.append(renderBlock(chapter, section, block));
   }
-  document.getElementById('app').append(
+  const s = newScreen();
+  s.append(
     topbar(section.title, `#/ch/${chapter.id}`),
     content,
     sectionNav(chapter, section),
   );
+  return s;
 }
 
 function sectionNav(chapter, section) {
@@ -213,35 +302,16 @@ function sectionNav(chapter, section) {
 }
 
 function renderSettings() {
-  const profile = currentProfile();
   const content = el('div', { class: 'content' });
   content.append(
     el('div', { class: 'hero' }, el('h2', {}, 'Settings')),
-    el('div', { class: 'section-label' }, 'Account'),
-    el('div', { class: 'setting-card' },
-      profile?.picture ? el('img', { class: 'avatar big', src: profile.picture, alt: '' }) : null,
-      el('div', {},
-        el('div', { class: 'name' }, profile?.name || 'Signed in'),
-        el('div', { class: 'sub' }, profile?.email || ''),
-      ),
-    ),
-    el('button', {
-      class: 'danger-btn',
-      onclick: async () => {
-        signOut();
-        location.hash = '#/';
-        await renderSignIn();
-      },
-    }, 'Sign out'),
     el('div', { class: 'section-label' }, 'Sync'),
     el('div', { class: 'setting-card small' },
-      el('div', {}, 'Your answers sync to Netlify Blobs, keyed to your Google email.'),
+      el('div', {}, 'Your answers sync to Netlify Blobs so they follow you across devices.'),
     ),
     el('button', {
       class: 'plain-btn',
-      onclick: async () => {
-        await store.forceFlush();
-      },
+      onclick: async () => { await store.forceFlush(); },
     }, 'Sync now'),
     el('div', { class: 'section-label' }, 'Export'),
     el('button', {
@@ -256,7 +326,9 @@ function renderSettings() {
       },
     }, 'Download JSON backup'),
   );
-  document.getElementById('app').append(topbar('Settings', '/'), content);
+  const s = newScreen();
+  s.append(topbar('Settings', '/'), content);
+  return s;
 }
 
 /* ----- Blocks ----- */
