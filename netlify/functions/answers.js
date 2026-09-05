@@ -4,12 +4,12 @@ import { timingSafeEqual } from 'node:crypto';
 const KEY = 'user:default';
 
 function checkPassphrase(req) {
-  const expected = process.env.APP_PASSPHRASE;
+  const expected = (process.env.APP_PASSPHRASE || '').trim();
   if (!expected) return false;
   const header = req.headers.get('authorization') || '';
   const m = header.match(/^Bearer\s+(.+)$/i);
   if (!m) return false;
-  const provided = m[1];
+  const provided = m[1].trim();
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
