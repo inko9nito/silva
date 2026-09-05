@@ -1,0 +1,8 @@
+{
+  "name": "{{APP_SHORT_NAME}}-app",
+  "private": true,
+  "description": "Site-root package. Netlify installs Function dependencies from HERE, not from netlify/functions/package.json — leaving them nested causes ERR_MODULE_NOT_FOUND at runtime.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

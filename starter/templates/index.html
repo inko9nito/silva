@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- viewport-fit=cover is required for env(safe-area-inset-*) to have non-zero values. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <!-- iOS "Add to Home Screen" — all four of these matter. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="{{APP_SHORT_NAME}}" />
+  <meta name="theme-color" content="#1b2340" />
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="stylesheet" href="./styles.css" />
+
+  <title>{{APP_TITLE}}</title>
+</head>
+<body>
+  <div id="app" class="app"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
