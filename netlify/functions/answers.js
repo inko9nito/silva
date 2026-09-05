@@ -9,11 +9,21 @@ function checkPassphrase(req) {
   const header = req.headers.get('authorization') || '';
   const m = header.match(/^Bearer\s+(.+)$/i);
   if (!m) return false;
-  const provided = m[1].trim();
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  try { return timingSafeEqual(a, b); } catch { return false; }
+  const raw = m[1].trim();
+  // Client base64-encodes so passphrases with spaces / punctuation survive
+  // the Authorization header. Fall back to raw for older clients.
+  let provided;
+  try { provided = Buffer.from(raw, 'base64').toString('utf8'); }
+  catch { provided = raw; }
+  // A non-base64 string won't decode to the intended value; also compare raw.
+  const candidates = [provided, raw];
+  for (const cand of candidates) {
+    const a = Buffer.from(cand);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length) continue;
+    try { if (timingSafeEqual(a, b)) return true; } catch {}
+  }
+  return false;
 }
 
 export default async (req) => {

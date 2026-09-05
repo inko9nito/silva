@@ -18,8 +18,8 @@ export function hasValidToken() {
 
 export async function getToken() {
   cached = cached || readSaved();
-  if (cached) return cached;
-  return new Promise((resolve) => { pending.push(resolve); });
+  if (cached) return encodeToken(cached);
+  return new Promise((resolve) => { pending.push(() => resolve(encodeToken(cached))); });
 }
 
 export function currentProfile() {
@@ -38,11 +38,16 @@ export function submitPassphrase(pw) {
   for (const r of waiters) r(pw);
 }
 
+function encodeToken(pw) {
+  // btoa can't handle unicode directly; encode UTF-8 first.
+  return btoa(unescape(encodeURIComponent(pw)));
+}
+
 export async function verifyPassphrase(pw) {
   try {
     const res = await fetch('/api/answers', {
       method: 'GET',
-      headers: { Authorization: `Bearer ${pw}` },
+      headers: { Authorization: `Bearer ${encodeToken(pw)}` },
     });
     return res.ok;
   } catch { return false; }
