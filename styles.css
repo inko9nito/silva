@@ -769,6 +769,34 @@ input, textarea, select {
 }
 .danger-btn { color: var(--danger); border-color: var(--danger); }
 
+/* --- Home tab bar --- */
+.home-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 14px;
+  background: var(--surface-alt);
+  padding: 4px;
+  border-radius: 999px;
+}
+.home-tabs button {
+  flex: 1;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  min-height: 40px;
+}
+.home-tabs button[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
 /* --- Audio tracks --- */
 .audio-track-list {
   display: flex;
