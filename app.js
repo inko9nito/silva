@@ -210,6 +210,12 @@ function newScreen() {
   return el('div', { class: 'screen' });
 }
 
+let homeTab = 'chapters';
+try {
+  const saved = sessionStorage.getItem('silva.homeTab');
+  if (saved) homeTab = saved;
+} catch {}
+
 function renderHome() {
   const profile = currentProfile();
   const settings = el('button', {
@@ -221,17 +227,54 @@ function renderHome() {
   const content = el('div', { class: 'content' });
   const main = chapters.filter(c => !c.reference);
   const refs = chapters.filter(c => c.reference);
+
+  const tabs = [
+    { id: 'chapters', label: 'Chapters' },
+    audioTracks.length ? { id: 'audio', label: 'Audio' } : null,
+    refs.length ? { id: 'reference', label: 'Reference' } : null,
+  ].filter(Boolean);
+
+  if (!tabs.find(t => t.id === homeTab)) homeTab = tabs[0].id;
+
+  const tabBar = el('div', { class: 'home-tabs', role: 'tablist' });
+  const paneWrap = el('div', { class: 'home-pane' });
+
+  const renderPane = () => {
+    paneWrap.innerHTML = '';
+    if (homeTab === 'chapters') {
+      paneWrap.append(el('div', { class: 'chapter-list' }, ...main.map(chapterCard)));
+    } else if (homeTab === 'audio') {
+      paneWrap.append(el('div', { class: 'audio-track-list' },
+        ...audioTracks.map((t, i) => audioTrackCard(t, i))));
+    } else if (homeTab === 'reference') {
+      paneWrap.append(el('div', { class: 'chapter-list' }, ...refs.map(chapterCard)));
+    }
+  };
+
+  for (const t of tabs) {
+    const btn = el('button', {
+      role: 'tab',
+      'aria-selected': String(t.id === homeTab),
+      onclick: () => {
+        if (homeTab === t.id) return;
+        homeTab = t.id;
+        try { sessionStorage.setItem('silva.homeTab', homeTab); } catch {}
+        for (const c of tabBar.children) c.setAttribute('aria-selected', String(c.dataset.id === homeTab));
+        renderPane();
+      },
+    }, t.label);
+    btn.dataset.id = t.id;
+    tabBar.append(btn);
+  }
+  renderPane();
+
   content.append(
     el('div', { class: 'hero' },
       el('h2', {}, 'Silva Life System'),
       el('p', {}, 'A companion workbook for the course.')
     ),
-    el('div', { class: 'section-label' }, 'Chapters'),
-    el('div', { class: 'chapter-list' }, ...main.map(chapterCard)),
-    audioTracks.length ? el('div', { class: 'section-label' }, 'Audio') : null,
-    audioTracks.length ? el('div', { class: 'chapter-list' }, audioHomeCard()) : null,
-    refs.length ? el('div', { class: 'section-label' }, 'Reference') : null,
-    refs.length ? el('div', { class: 'chapter-list' }, ...refs.map(chapterCard)) : null,
+    tabBar,
+    paneWrap,
   );
   const s = newScreen();
   s.append(topbar('Silva Companion', null, settings), content);
@@ -253,16 +296,6 @@ function chapterCard(chapter) {
       el('div', { class: 'progress' }, el('span', { style: `width:${p.pct}%` })),
       el('span', {}, `${p.done}/${p.total}`)
     )
-  );
-}
-
-function audioHomeCard() {
-  return el('a', { class: 'chapter-card', href: '#/audio' },
-    el('div', { class: 'num' }, 'Audio'),
-    el('div', { class: 'title' }, 'Guided tracks'),
-    el('div', { class: 'meta' },
-      el('span', {}, `${audioTracks.length} track${audioTracks.length === 1 ? '' : 's'}`),
-    ),
   );
 }
 
