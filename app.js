@@ -1,6 +1,17 @@
 import { chapters } from './data/index.js';
+import { audioTracks } from './data/audio.js';
 import { currentProfile } from './auth.js';
 import * as store from './store.js';
+
+function formatDuration(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '';
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
 
 /* ----- Save indicator ----- */
 let saveTimer = null;
@@ -29,6 +40,7 @@ function parseRoute() {
   if (!h) return { name: 'home' };
   const parts = h.split('/').filter(Boolean);
   if (parts[0] === 'settings') return { name: 'settings' };
+  if (parts[0] === 'audio') return { name: 'audio' };
   if (parts[0] === 'ch' && parts[1]) {
     const chapter = chapters.find(c => c.id === parts[1]);
     if (!chapter) return { name: 'home' };
@@ -44,6 +56,7 @@ function parseRoute() {
 function routeKey(route) {
   if (route.name === 'home') return 'home';
   if (route.name === 'settings') return 'settings';
+  if (route.name === 'audio') return 'audio';
   if (route.name === 'chapter') return `ch:${route.chapter.id}`;
   if (route.name === 'section') return `ch:${route.chapter.id}:s:${route.section.id}`;
   return '';
@@ -52,6 +65,7 @@ function routeKey(route) {
 function routeDepth(route) {
   if (route.name === 'home') return 0;
   if (route.name === 'settings') return 1;
+  if (route.name === 'audio') return 1;
   if (route.name === 'chapter') return 1;
   if (route.name === 'section') return 2;
   return 0;
@@ -179,6 +193,7 @@ function render() {
   else if (route.name === 'chapter') screen = renderChapter(route.chapter);
   else if (route.name === 'section') screen = renderSection(route.chapter, route.section);
   else if (route.name === 'settings') screen = renderSettings();
+  else if (route.name === 'audio') screen = renderAudio();
   if (!screen) return;
 
   let direction = 'none';
@@ -213,6 +228,8 @@ function renderHome() {
     ),
     el('div', { class: 'section-label' }, 'Chapters'),
     el('div', { class: 'chapter-list' }, ...main.map(chapterCard)),
+    audioTracks.length ? el('div', { class: 'section-label' }, 'Audio') : null,
+    audioTracks.length ? el('div', { class: 'chapter-list' }, audioHomeCard()) : null,
     refs.length ? el('div', { class: 'section-label' }, 'Reference') : null,
     refs.length ? el('div', { class: 'chapter-list' }, ...refs.map(chapterCard)) : null,
   );
@@ -237,6 +254,59 @@ function chapterCard(chapter) {
       el('span', {}, `${p.done}/${p.total}`)
     )
   );
+}
+
+function audioHomeCard() {
+  return el('a', { class: 'chapter-card', href: '#/audio' },
+    el('div', { class: 'num' }, 'Audio'),
+    el('div', { class: 'title' }, 'Guided tracks'),
+    el('div', { class: 'meta' },
+      el('span', {}, `${audioTracks.length} track${audioTracks.length === 1 ? '' : 's'}`),
+    ),
+  );
+}
+
+function audioTrackCard(track, idx) {
+  const audio = el('audio', {
+    controls: true,
+    preload: 'metadata',
+    src: track.src,
+    class: 'audio-player',
+  });
+  const durationEl = el('span', { class: 'audio-duration' },
+    Number.isFinite(track.duration) ? formatDuration(track.duration) : '—:—');
+  if (!Number.isFinite(track.duration)) {
+    audio.addEventListener('loadedmetadata', () => {
+      durationEl.textContent = formatDuration(audio.duration);
+    });
+  }
+  return el('div', { class: 'audio-track-card' },
+    el('div', { class: 'audio-track-head' },
+      el('div', { class: 'idx' }, String(idx + 1)),
+      el('div', { class: 'body' },
+        el('div', { class: 'name' }, track.title),
+        el('div', { class: 'sub' }, durationEl),
+      ),
+    ),
+    audio,
+  );
+}
+
+function renderAudio() {
+  const content = el('div', { class: 'content' });
+  content.append(
+    el('div', { class: 'hero' },
+      el('h2', {}, 'Audio'),
+      el('p', {}, 'Guided tracks to listen alongside the workbook.'),
+    ),
+    el('div', { class: 'section-label' }, 'Tracks'),
+    audioTracks.length
+      ? el('div', { class: 'audio-track-list' }, ...audioTracks.map((t, i) => audioTrackCard(t, i)))
+      : el('div', { class: 'setting-card small' }, el('div', {}, 'No tracks yet.')),
+  );
+  const s = newScreen();
+  s.append(topbar('Audio', '/'), content);
+  return s;
 }
 
 function renderChapter(chapter) {

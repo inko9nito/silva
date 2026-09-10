@@ -769,6 +769,55 @@ input, textarea, select {
 }
 .danger-btn { color: var(--danger); border-color: var(--danger); }
 
+/* --- Audio tracks --- */
+.audio-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.audio-track-card {
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.audio-track-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.audio-track-head .idx {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.audio-track-head .body { flex: 1; min-width: 0; }
+.audio-track-head .name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.audio-track-head .sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.audio-duration {
+  font-variant-numeric: tabular-nums;
+}
+.audio-player {
+  width: 100%;
+  display: block;
+}
+
 /* --- Audio placeholder --- */
 .block.audio-placeholder {
   display: flex;
